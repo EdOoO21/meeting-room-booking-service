@@ -10,7 +10,7 @@ func normalizeUTC(value time.Time) time.Time {
 	return value.UTC()
 }
 
-func requireUTC(value time.Time) (time.Time, error) {
+func RequireUTC(value time.Time) (time.Time, error) {
 	if value.IsZero() {
 		return time.Time{}, ErrInvalidTimestamp
 	}

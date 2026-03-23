@@ -115,6 +115,25 @@ func (d DayOfWeek) ToTimeWeekday() time.Weekday {
 	}
 }
 
+func DayOfWeekFromWeekday(weekday time.Weekday) DayOfWeek {
+	switch weekday {
+	case time.Monday:
+		return Monday
+	case time.Tuesday:
+		return Tuesday
+	case time.Wednesday:
+		return Wednesday
+	case time.Thursday:
+		return Thursday
+	case time.Friday:
+		return Friday
+	case time.Saturday:
+		return Saturday
+	default:
+		return Sunday
+	}
+}
+
 func (t TimeOfDay) IsValid() bool {
 	return t.Hour >= 0 && t.Hour <= 23 && t.Minute >= 0 && t.Minute <= 59
 }

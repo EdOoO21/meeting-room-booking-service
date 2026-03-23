@@ -12,6 +12,8 @@ type TokenClaims struct {
 	Role   domain.Role
 }
 
+// TokenService выпускает токены доступа для API.
 type TokenService interface {
+	// IssueToken создает токен по переданным claims.
 	IssueToken(ctx context.Context, claims TokenClaims) (string, error)
 }

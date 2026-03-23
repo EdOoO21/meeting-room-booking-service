@@ -18,12 +18,12 @@ func NewSlot(id, roomID uuid.UUID, start, end time.Time) (Slot, error) {
 		return Slot{}, ErrInvalidID
 	}
 
-	normalizedStart, err := requireUTC(start)
+	normalizedStart, err := RequireUTC(start)
 	if err != nil {
 		return Slot{}, err
 	}
 
-	normalizedEnd, err := requireUTC(end)
+	normalizedEnd, err := RequireUTC(end)
 	if err != nil {
 		return Slot{}, err
 	}
