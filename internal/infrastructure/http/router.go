@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-func NewRouter() stdhttp.Handler {
+func NewRouter(services Services) stdhttp.Handler {
 	router := chi.NewRouter()
 
 	router.Use(middleware.RequestID)
