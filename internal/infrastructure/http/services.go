@@ -6,11 +6,13 @@ import (
 	approoms "github.com/avito-internships/test-backend-1-EdOoO21/internal/application/rooms"
 	appschedules "github.com/avito-internships/test-backend-1-EdOoO21/internal/application/schedules"
 	appslots "github.com/avito-internships/test-backend-1-EdOoO21/internal/application/slots"
+	appjwt "github.com/avito-internships/test-backend-1-EdOoO21/internal/infrastructure/jwt"
 	"github.com/avito-internships/test-backend-1-EdOoO21/internal/ports"
 )
 
 type Services struct {
 	Logger    ports.Logger
+	JWT       *appjwt.Service
 	Auth      *appauth.Service
 	Rooms     *approoms.Service
 	Schedules *appschedules.Service

@@ -21,6 +21,7 @@ import (
 	appid "github.com/avito-internships/test-backend-1-EdOoO21/internal/infrastructure/id"
 	appjwt "github.com/avito-internships/test-backend-1-EdOoO21/internal/infrastructure/jwt"
 	logs "github.com/avito-internships/test-backend-1-EdOoO21/internal/infrastructure/logger"
+	apppassword "github.com/avito-internships/test-backend-1-EdOoO21/internal/infrastructure/password"
 	apppostgres "github.com/avito-internships/test-backend-1-EdOoO21/internal/infrastructure/postgres"
 	"github.com/avito-internships/test-backend-1-EdOoO21/internal/ports"
 	"github.com/avito-internships/test-backend-1-EdOoO21/internal/settings"
@@ -96,12 +97,12 @@ func buildServices(ctx context.Context, cfg settings.Config, logger ports.Logger
 
 	clock := appclock.New()
 	ids := appid.New()
+	passwords := apppassword.New()
 	tokens := appjwt.New(cfg.JWT.Secret, cfg.JWT.TTL)
 	conferenceLinks := appconference.NewMock()
 	txManager := apppostgres.NewTxManager(db)
 
 	userRepo := apppostgres.NewUserRepository(db)
-	_ = userRepo
 	roomRepo := apppostgres.NewRoomRepository(db)
 	scheduleRepo := apppostgres.NewScheduleRepository(db)
 	slotRepo := apppostgres.NewSlotRepository(db)
@@ -109,7 +110,8 @@ func buildServices(ctx context.Context, cfg settings.Config, logger ports.Logger
 
 	services := httptransport.Services{
 		Logger:    logger,
-		Auth:      appauth.NewService(tokens),
+		JWT:       tokens,
+		Auth:      appauth.NewService(userRepo, ids, clock, passwords, tokens),
 		Rooms:     approoms.NewService(roomRepo, ids, clock),
 		Schedules: appschedules.NewService(roomRepo, scheduleRepo, slotRepo, txManager, ids, clock),
 		Slots:     appslots.NewService(roomRepo, scheduleRepo, slotRepo, txManager, ids, clock),

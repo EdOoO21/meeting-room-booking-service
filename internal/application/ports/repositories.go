@@ -10,12 +10,12 @@ import (
 
 // UserRepository хранит и читает пользователей
 type UserRepository interface {
-	// Create сохраняет нового пользователя
-	Create(ctx context.Context, user domain.User) error
-	// GetByID возвращает пользователя по идентификатору
+	// Create сохраняет нового пользователя вместе с хешем пароля.
+	Create(ctx context.Context, user domain.User, passwordHash string) error
+	// GetByID возвращает пользователя по идентификатору.
 	GetByID(ctx context.Context, id uuid.UUID) (domain.User, bool, error)
-	// GetByEmail возвращает пользователя по email
-	GetByEmail(ctx context.Context, email string) (domain.User, bool, error)
+	// GetByEmail возвращает пользователя и хеш его пароля по email.
+	GetByEmail(ctx context.Context, email string) (domain.User, string, bool, error)
 }
 
 // RoomRepository хранит и читает переговорки
