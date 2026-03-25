@@ -21,7 +21,7 @@ PERF_APP_LOG := .tmp/perf-app.log
 LOAD_VUS ?= 50
 LOAD_DURATION ?= 30s
 
-.PHONY: up seed down down-v test-db-up test-db-down test perf-db-up perf-db-down perf-seed perf-app-up perf-app-down perf-up perf-down load-slots perf-test-slots
+.PHONY: swagger up seed down down-v test-db-up test-db-down test perf-db-up perf-db-down perf-seed perf-app-up perf-app-down perf-up perf-down load-slots perf-test-slots
 
 up:
 	set -a; source .env; set +a; docker compose up --build
@@ -94,3 +94,6 @@ perf-test-slots:
 	@trap '$(MAKE) perf-down >/dev/null' EXIT; \
 	$(MAKE) perf-up; \
 	$(MAKE) load-slots
+
+swagger:
+	go run github.com/swaggo/swag/cmd/swag@latest init -g cmd/server/main.go -o docs

@@ -55,10 +55,7 @@ func (r *ScheduleRepository) GetByRoomID(ctx context.Context, roomID uuid.UUID) 
 		return domain.Schedule{}, false, wrapScanError("schedule", err)
 	}
 
-	domainDays, err := scanDaysOfWeek(days)
-	if err != nil {
-		return domain.Schedule{}, false, fmt.Errorf("build schedule days: %w", err)
-	}
+	domainDays := scanDaysOfWeek(days)
 
 	domainStart, err := scanTimeOfDay(startTime)
 	if err != nil {

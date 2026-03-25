@@ -1,3 +1,12 @@
+// @title Room Booking API
+// @version 1.0
+// @description API для бронирования переговорок и управления расписаниями.
+// @host localhost:8080
+// @BasePath /
+// @schemes http
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 package main
 
 import (
@@ -27,19 +36,24 @@ import (
 	"github.com/avito-internships/test-backend-1-EdOoO21/internal/settings"
 )
 
+const (
+	serverShutdownTimeout   = 10 * time.Second
+	serverReadHeaderTimeout = 5 * time.Second
+)
+
 func main() {
 	logger := logs.NewLogger()
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	if err := run(ctx, logger); err != nil {
+	if err := run(logger); err != nil {
 		logger.Error("application stopped with error", "error", err)
 		os.Exit(1)
 	}
 }
 
-func run(ctx context.Context, logger ports.Logger) error {
+func run(logger ports.Logger) error {
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
 	cfg := settings.NewConfig()
 
 	services, db, err := buildServices(ctx, cfg, logger)
@@ -58,8 +72,8 @@ func run(ctx context.Context, logger ports.Logger) error {
 	go func() {
 		logger.Info("http server starting", "addr", server.Addr)
 
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, stdhttp.ErrServerClosed) {
-			serverErrCh <- err
+		if listenErr := server.ListenAndServe(); listenErr != nil && !errors.Is(listenErr, stdhttp.ErrServerClosed) {
+			serverErrCh <- listenErr
 			return
 		}
 
@@ -70,18 +84,18 @@ func run(ctx context.Context, logger ports.Logger) error {
 	case <-ctx.Done():
 		logger.Warn("shutdown signal received")
 
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), serverShutdownTimeout)
 		defer cancel()
 
-		if err := server.Shutdown(shutdownCtx); err != nil {
-			return fmt.Errorf("shutdown server: %w", err)
+		if shutdownErr := server.Shutdown(shutdownCtx); shutdownErr != nil {
+			return fmt.Errorf("shutdown server: %w", shutdownErr)
 		}
 
 		logger.Info("http server stopped gracefully")
 		return nil
-	case err := <-serverErrCh:
-		if err != nil {
-			return fmt.Errorf("listen server: %w", err)
+	case serverErr := <-serverErrCh:
+		if serverErr != nil {
+			return fmt.Errorf("listen server: %w", serverErr)
 		}
 
 		logger.Info("http server stopped")
@@ -127,6 +141,6 @@ func newHTTPServer(cfg settings.Config, services httptransport.Services) *stdhtt
 	return &stdhttp.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.HTTP.Port),
 		Handler:           router,
-		ReadHeaderTimeout: 5 * time.Second,
+		ReadHeaderTimeout: serverReadHeaderTimeout,
 	}
 }

@@ -83,15 +83,15 @@ func (r *SlotRepository) ListAvailableByRoomAndDate(ctx context.Context, roomID 
 
 	slots := make([]domain.Slot, 0)
 	for rows.Next() {
-		slot, err := scanSlotRow(rows)
-		if err != nil {
-			return nil, err
+		slot, scanErr := scanSlotRow(rows)
+		if scanErr != nil {
+			return nil, scanErr
 		}
 		slots = append(slots, slot)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate slots: %w", err)
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, fmt.Errorf("iterate slots: %w", rowsErr)
 	}
 
 	return slots, nil

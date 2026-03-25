@@ -2,6 +2,7 @@ package rooms
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	appports "github.com/avito-internships/test-backend-1-EdOoO21/internal/application/ports"
@@ -40,7 +41,7 @@ func NewService(rooms appports.RoomRepository, ids appports.IDGenerator, clock a
 
 func (s *Service) Create(ctx context.Context, input CreateInput) (CreateOutput, error) {
 	if err := input.Actor.RequireRole(domain.RoleAdmin); err != nil {
-		return CreateOutput{}, err
+		return CreateOutput{}, fmt.Errorf("authorize room creation: %w", err)
 	}
 
 	room, err := domain.NewRoom(
@@ -51,11 +52,11 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (CreateOutput, 
 		s.clock.NowUTC(),
 	)
 	if err != nil {
-		return CreateOutput{}, err
+		return CreateOutput{}, fmt.Errorf("build room: %w", err)
 	}
 
-	if err := s.rooms.Create(ctx, room); err != nil {
-		return CreateOutput{}, err
+	if createErr := s.rooms.Create(ctx, room); createErr != nil {
+		return CreateOutput{}, fmt.Errorf("create room: %w", createErr)
 	}
 
 	return CreateOutput{Room: room}, nil
@@ -63,12 +64,12 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (CreateOutput, 
 
 func (s *Service) List(ctx context.Context, input ListInput) (ListOutput, error) {
 	if err := input.Actor.RequireRole(domain.RoleAdmin, domain.RoleUser); err != nil {
-		return ListOutput{}, err
+		return ListOutput{}, fmt.Errorf("authorize rooms list: %w", err)
 	}
 
 	rooms, err := s.rooms.List(ctx)
 	if err != nil {
-		return ListOutput{}, err
+		return ListOutput{}, fmt.Errorf("list rooms: %w", err)
 	}
 
 	return ListOutput{Rooms: rooms}, nil

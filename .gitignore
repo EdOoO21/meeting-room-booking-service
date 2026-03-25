@@ -27,3 +27,5 @@ vendor/
 .DS_Store
 DECISIONS.md
 .tmp
+seed
+server

@@ -85,7 +85,7 @@ func TestService_DummyLogin_ReturnsFixedUserForRole(t *testing.T) {
 		fakeIDGenerator{},
 		fakeClock{},
 		fakePasswordHasher{},
-		fakeTokenService{issueFn: func(ctx context.Context, claims appports.TokenClaims) (string, error) {
+		fakeTokenService{issueFn: func(_ context.Context, claims appports.TokenClaims) (string, error) {
 			if claims.UserID != DummyAdminUserID {
 				t.Fatalf("claims.UserID = %v, want %v", claims.UserID, DummyAdminUserID)
 			}
@@ -130,13 +130,13 @@ func TestService_Register_Success(t *testing.T) {
 
 	service := NewService(
 		fakeUserRepository{
-			getByEmailFn: func(ctx context.Context, email string) (domain.User, string, bool, error) {
+			getByEmailFn: func(_ context.Context, email string) (domain.User, string, bool, error) {
 				if email != "user@example.com" {
 					t.Fatalf("email lookup = %q, want %q", email, "user@example.com")
 				}
 				return domain.User{}, "", false, nil
 			},
-			createFn: func(ctx context.Context, user domain.User, passwordHash string) error {
+			createFn: func(_ context.Context, user domain.User, passwordHash string) error {
 				createdUser = user
 				createdHash = passwordHash
 				return nil
@@ -192,7 +192,7 @@ func TestService_Register_ReturnsValidationAndConflictErrors(t *testing.T) {
 		t.Parallel()
 
 		service := NewService(
-			fakeUserRepository{getByEmailFn: func(ctx context.Context, email string) (domain.User, string, bool, error) {
+			fakeUserRepository{getByEmailFn: func(_ context.Context, _ string) (domain.User, string, bool, error) {
 				return domain.User{ID: uuid.New()}, "hash", true, nil
 			}},
 			fakeIDGenerator{next: uuid.New()},
@@ -213,7 +213,7 @@ func TestService_Login_Success(t *testing.T) {
 
 	userID := uuid.New()
 	service := NewService(
-		fakeUserRepository{getByEmailFn: func(ctx context.Context, email string) (domain.User, string, bool, error) {
+		fakeUserRepository{getByEmailFn: func(_ context.Context, _ string) (domain.User, string, bool, error) {
 			return domain.User{ID: userID, Role: domain.RoleUser}, "hashed", true, nil
 		}},
 		fakeIDGenerator{},
@@ -224,7 +224,7 @@ func TestService_Login_Success(t *testing.T) {
 			}
 			return nil
 		}},
-		fakeTokenService{issueFn: func(ctx context.Context, claims appports.TokenClaims) (string, error) {
+		fakeTokenService{issueFn: func(_ context.Context, claims appports.TokenClaims) (string, error) {
 			if claims.UserID != userID || claims.Role != domain.RoleUser {
 				t.Fatalf("claims = %+v, want userID=%v role=%q", claims, userID, domain.RoleUser)
 			}
@@ -249,7 +249,7 @@ func TestService_Login_ReturnsInvalidCredentials(t *testing.T) {
 		t.Parallel()
 
 		service := NewService(
-			fakeUserRepository{getByEmailFn: func(ctx context.Context, email string) (domain.User, string, bool, error) {
+			fakeUserRepository{getByEmailFn: func(_ context.Context, _ string) (domain.User, string, bool, error) {
 				return domain.User{}, "", false, nil
 			}},
 			fakeIDGenerator{},
@@ -269,12 +269,12 @@ func TestService_Login_ReturnsInvalidCredentials(t *testing.T) {
 		t.Parallel()
 
 		service := NewService(
-			fakeUserRepository{getByEmailFn: func(ctx context.Context, email string) (domain.User, string, bool, error) {
+			fakeUserRepository{getByEmailFn: func(_ context.Context, _ string) (domain.User, string, bool, error) {
 				return domain.User{ID: uuid.New(), Role: domain.RoleUser}, "hashed", true, nil
 			}},
 			fakeIDGenerator{},
 			fakeClock{},
-			fakePasswordHasher{compareFn: func(hash, password string) error {
+			fakePasswordHasher{compareFn: func(_, _ string) error {
 				return errors.New("mismatch")
 			}},
 			fakeTokenService{},

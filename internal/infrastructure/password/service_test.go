@@ -19,10 +19,10 @@ func TestService_HashAndCompare(t *testing.T) {
 		t.Fatal("Hash() returned original password")
 	}
 
-	if err := svc.Compare(hash, password); err != nil {
-		t.Fatalf("Compare() error = %v, want nil for correct password", err)
+	if compareErr := svc.Compare(hash, password); compareErr != nil {
+		t.Fatalf("Compare() error = %v, want nil for correct password", compareErr)
 	}
-	if err := svc.Compare(hash, "wrong-password"); err == nil {
+	if compareErr := svc.Compare(hash, "wrong-password"); compareErr == nil {
 		t.Fatal("Compare() error = nil, want error for wrong password")
 	}
 }

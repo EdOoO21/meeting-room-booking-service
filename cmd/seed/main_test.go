@@ -95,12 +95,12 @@ func TestEnsureDemoUser_ReturnsExistingUser(t *testing.T) {
 
 	called := false
 	user, created, err := ensureDemoUser(context.Background(), fakeAuthRegistrar{
-		registerFn: func(ctx context.Context, input appauth.RegisterInput) (appauth.RegisterOutput, error) {
+		registerFn: func(_ context.Context, _ appauth.RegisterInput) (appauth.RegisterOutput, error) {
 			called = true
 			return appauth.RegisterOutput{}, nil
 		},
 	}, fakeUserByEmailGetter{
-		getByEmailFn: func(ctx context.Context, email string) (domain.User, string, bool, error) {
+		getByEmailFn: func(_ context.Context, email string) (domain.User, string, bool, error) {
 			if email != "demo.user@example.com" {
 				t.Fatalf("email = %q, want %q", email, "demo.user@example.com")
 			}
@@ -131,7 +131,7 @@ func TestEnsureDemoUser_RegistersMissingUser(t *testing.T) {
 
 	called := false
 	user, created, err := ensureDemoUser(context.Background(), fakeAuthRegistrar{
-		registerFn: func(ctx context.Context, input appauth.RegisterInput) (appauth.RegisterOutput, error) {
+		registerFn: func(_ context.Context, input appauth.RegisterInput) (appauth.RegisterOutput, error) {
 			called = true
 			if input.Email != "demo.user@example.com" || input.Password != "demo-pass-123" || input.Role != domain.RoleUser {
 				t.Fatalf("unexpected register input: %+v", input)
@@ -139,7 +139,7 @@ func TestEnsureDemoUser_RegistersMissingUser(t *testing.T) {
 			return appauth.RegisterOutput{User: createdUser}, nil
 		},
 	}, fakeUserByEmailGetter{
-		getByEmailFn: func(ctx context.Context, email string) (domain.User, string, bool, error) {
+		getByEmailFn: func(_ context.Context, email string) (domain.User, string, bool, error) {
 			if email != "demo.user@example.com" {
 				t.Fatalf("email = %q, want %q", email, "demo.user@example.com")
 			}
@@ -166,12 +166,12 @@ func TestEnsureRoom_ReturnsExistingRoomByName(t *testing.T) {
 	existing := domain.Room{ID: uuid.New(), Name: "Atlas"}
 	created := false
 	room, wasCreated, err := ensureRoom(context.Background(), fakeRoomCreator{
-		createFn: func(ctx context.Context, input approoms.CreateInput) (approoms.CreateOutput, error) {
+		createFn: func(_ context.Context, _ approoms.CreateInput) (approoms.CreateOutput, error) {
 			created = true
 			return approoms.CreateOutput{}, nil
 		},
 	}, fakeRoomLister{
-		listFn: func(ctx context.Context) ([]domain.Room, error) {
+		listFn: func(_ context.Context) ([]domain.Room, error) {
 			return []domain.Room{existing}, nil
 		},
 	}, shared.Actor{UserID: uuid.New(), Role: domain.RoleAdmin}, seedRoomSpec{Name: "atlas"})
@@ -194,13 +194,13 @@ func TestEnsureRoom_CreatesMissingRoom(t *testing.T) {
 
 	createdRoom := domain.Room{ID: uuid.New(), Name: "Atlas"}
 	room, wasCreated, err := ensureRoom(context.Background(), fakeRoomCreator{
-		createFn: func(ctx context.Context, input approoms.CreateInput) (approoms.CreateOutput, error) {
+		createFn: func(_ context.Context, input approoms.CreateInput) (approoms.CreateOutput, error) {
 			if input.Name != "Atlas" || input.Description != "Main demo room" || input.Capacity == nil || *input.Capacity != 8 {
 				t.Fatalf("unexpected create input: %+v", input)
 			}
 			return approoms.CreateOutput{Room: createdRoom}, nil
 		},
-	}, fakeRoomLister{listFn: func(ctx context.Context) ([]domain.Room, error) { return nil, nil }}, shared.Actor{UserID: uuid.New(), Role: domain.RoleAdmin}, seedRoomSpec{Name: "Atlas", Description: "Main demo room", Capacity: 8})
+	}, fakeRoomLister{listFn: func(_ context.Context) ([]domain.Room, error) { return nil, nil }}, shared.Actor{UserID: uuid.New(), Role: domain.RoleAdmin}, seedRoomSpec{Name: "Atlas", Description: "Main demo room", Capacity: 8})
 	if err != nil {
 		t.Fatalf("ensureRoom() error = %v", err)
 	}
@@ -217,12 +217,12 @@ func TestEnsureSchedule_SkipsExistingSchedule(t *testing.T) {
 
 	created := false
 	createdSchedule, err := ensureSchedule(context.Background(), fakeScheduleCreator{
-		createFn: func(ctx context.Context, input appschedules.CreateInput) (appschedules.CreateOutput, error) {
+		createFn: func(_ context.Context, _ appschedules.CreateInput) (appschedules.CreateOutput, error) {
 			created = true
 			return appschedules.CreateOutput{}, nil
 		},
 	}, fakeScheduleByRoomGetter{
-		getByRoomIDFn: func(ctx context.Context, roomID uuid.UUID) (domain.Schedule, bool, error) {
+		getByRoomIDFn: func(_ context.Context, _ uuid.UUID) (domain.Schedule, bool, error) {
 			return domain.Schedule{ID: uuid.New()}, true, nil
 		},
 	}, shared.Actor{UserID: uuid.New(), Role: domain.RoleAdmin}, uuid.New(), seedRoomSpec{})
@@ -242,14 +242,14 @@ func TestEnsureSchedule_CreatesMissingSchedule(t *testing.T) {
 
 	roomID := uuid.New()
 	createdSchedule, err := ensureSchedule(context.Background(), fakeScheduleCreator{
-		createFn: func(ctx context.Context, input appschedules.CreateInput) (appschedules.CreateOutput, error) {
+		createFn: func(_ context.Context, input appschedules.CreateInput) (appschedules.CreateOutput, error) {
 			if input.RoomID != roomID || input.StartTime != "09:00" || input.EndTime != "18:00" || len(input.DaysOfWeek) != 2 {
 				t.Fatalf("unexpected create input: %+v", input)
 			}
 			return appschedules.CreateOutput{}, nil
 		},
 	}, fakeScheduleByRoomGetter{
-		getByRoomIDFn: func(ctx context.Context, roomID uuid.UUID) (domain.Schedule, bool, error) {
+		getByRoomIDFn: func(_ context.Context, _ uuid.UUID) (domain.Schedule, bool, error) {
 			return domain.Schedule{}, false, nil
 		},
 	}, shared.Actor{UserID: uuid.New(), Role: domain.RoleAdmin}, roomID, seedRoomSpec{Days: []domain.DayOfWeek{domain.Monday, domain.Tuesday}, StartTime: "09:00", EndTime: "18:00"})
@@ -272,15 +272,15 @@ func TestEnsureDemoBooking_SkipsWhenUserAlreadyHasBookings(t *testing.T) {
 	slotsCalled := false
 	createCalled := false
 	created, err := ensureDemoBooking(context.Background(), fakeSlotAvailabilityLister{
-		listAvailableFn: func(ctx context.Context, input appslots.ListAvailableInput) (appslots.ListAvailableOutput, error) {
+		listAvailableFn: func(_ context.Context, _ appslots.ListAvailableInput) (appslots.ListAvailableOutput, error) {
 			slotsCalled = true
 			return appslots.ListAvailableOutput{}, nil
 		},
 	}, fakeBookingService{
-		listMineFn: func(ctx context.Context, input appbookings.ListMineInput) (appbookings.ListMineOutput, error) {
+		listMineFn: func(_ context.Context, _ appbookings.ListMineInput) (appbookings.ListMineOutput, error) {
 			return appbookings.ListMineOutput{Bookings: []domain.Booking{{ID: uuid.New()}}}, nil
 		},
-		createFn: func(ctx context.Context, input appbookings.CreateInput) (appbookings.CreateOutput, error) {
+		createFn: func(_ context.Context, _ appbookings.CreateInput) (appbookings.CreateOutput, error) {
 			createCalled = true
 			return appbookings.CreateOutput{}, nil
 		},
@@ -307,7 +307,7 @@ func TestEnsureDemoBooking_CreatesBookingFromFirstAvailableSlot(t *testing.T) {
 	roomID := uuid.New()
 	slotID := uuid.New()
 	created, err := ensureDemoBooking(context.Background(), fakeSlotAvailabilityLister{
-		listAvailableFn: func(ctx context.Context, input appslots.ListAvailableInput) (appslots.ListAvailableOutput, error) {
+		listAvailableFn: func(_ context.Context, input appslots.ListAvailableInput) (appslots.ListAvailableOutput, error) {
 			if input.RoomID != roomID {
 				t.Fatalf("input.RoomID = %v, want %v", input.RoomID, roomID)
 			}
@@ -320,10 +320,10 @@ func TestEnsureDemoBooking_CreatesBookingFromFirstAvailableSlot(t *testing.T) {
 			return appslots.ListAvailableOutput{Slots: []domain.Slot{{ID: slotID}}}, nil
 		},
 	}, fakeBookingService{
-		listMineFn: func(ctx context.Context, input appbookings.ListMineInput) (appbookings.ListMineOutput, error) {
+		listMineFn: func(_ context.Context, _ appbookings.ListMineInput) (appbookings.ListMineOutput, error) {
 			return appbookings.ListMineOutput{}, nil
 		},
-		createFn: func(ctx context.Context, input appbookings.CreateInput) (appbookings.CreateOutput, error) {
+		createFn: func(_ context.Context, input appbookings.CreateInput) (appbookings.CreateOutput, error) {
 			if input.SlotID != slotID || !input.CreateConferenceLink {
 				t.Fatalf("unexpected create input: %+v", input)
 			}
@@ -348,14 +348,14 @@ func TestEnsureDemoBooking_PropagatesCreateError(t *testing.T) {
 
 	wantErr := errors.New("create booking failed")
 	_, err = ensureDemoBooking(context.Background(), fakeSlotAvailabilityLister{
-		listAvailableFn: func(ctx context.Context, input appslots.ListAvailableInput) (appslots.ListAvailableOutput, error) {
+		listAvailableFn: func(_ context.Context, _ appslots.ListAvailableInput) (appslots.ListAvailableOutput, error) {
 			return appslots.ListAvailableOutput{Slots: []domain.Slot{{ID: uuid.New()}}}, nil
 		},
 	}, fakeBookingService{
-		listMineFn: func(ctx context.Context, input appbookings.ListMineInput) (appbookings.ListMineOutput, error) {
+		listMineFn: func(_ context.Context, _ appbookings.ListMineInput) (appbookings.ListMineOutput, error) {
 			return appbookings.ListMineOutput{}, nil
 		},
-		createFn: func(ctx context.Context, input appbookings.CreateInput) (appbookings.CreateOutput, error) {
+		createFn: func(_ context.Context, _ appbookings.CreateInput) (appbookings.CreateOutput, error) {
 			return appbookings.CreateOutput{}, wantErr
 		},
 	}, user, domain.Room{ID: uuid.New()})

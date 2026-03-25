@@ -136,19 +136,19 @@ func TestService_Create_Success(t *testing.T) {
 	var createdSlots []domain.Slot
 
 	service := NewService(
-		fakeRoomRepository{getByIDFn: func(ctx context.Context, id uuid.UUID) (domain.Room, bool, error) {
+		fakeRoomRepository{getByIDFn: func(_ context.Context, _ uuid.UUID) (domain.Room, bool, error) {
 			return domain.Room{ID: roomID}, true, nil
 		}},
 		fakeScheduleRepository{
-			getByRoomIDFn: func(ctx context.Context, roomID uuid.UUID) (domain.Schedule, bool, error) {
+			getByRoomIDFn: func(_ context.Context, _ uuid.UUID) (domain.Schedule, bool, error) {
 				return domain.Schedule{}, false, nil
 			},
-			createFn: func(ctx context.Context, schedule domain.Schedule) error {
+			createFn: func(_ context.Context, schedule domain.Schedule) error {
 				createdSchedule = schedule
 				return nil
 			},
 		},
-		fakeSlotRepository{createManyFn: func(ctx context.Context, slots []domain.Slot) error {
+		fakeSlotRepository{createManyFn: func(_ context.Context, slots []domain.Slot) error {
 			createdSlots = append([]domain.Slot(nil), slots...)
 			return nil
 		}},
@@ -192,7 +192,7 @@ func TestService_Create_ReturnsRoomNotFoundAndScheduleExists(t *testing.T) {
 		t.Parallel()
 
 		service := NewService(
-			fakeRoomRepository{getByIDFn: func(ctx context.Context, id uuid.UUID) (domain.Room, bool, error) {
+			fakeRoomRepository{getByIDFn: func(_ context.Context, _ uuid.UUID) (domain.Room, bool, error) {
 				return domain.Room{}, false, nil
 			}},
 			fakeScheduleRepository{},
@@ -218,10 +218,10 @@ func TestService_Create_ReturnsRoomNotFoundAndScheduleExists(t *testing.T) {
 		t.Parallel()
 
 		service := NewService(
-			fakeRoomRepository{getByIDFn: func(ctx context.Context, id uuid.UUID) (domain.Room, bool, error) {
+			fakeRoomRepository{getByIDFn: func(_ context.Context, id uuid.UUID) (domain.Room, bool, error) {
 				return domain.Room{ID: id}, true, nil
 			}},
-			fakeScheduleRepository{getByRoomIDFn: func(ctx context.Context, roomID uuid.UUID) (domain.Schedule, bool, error) {
+			fakeScheduleRepository{getByRoomIDFn: func(_ context.Context, _ uuid.UUID) (domain.Schedule, bool, error) {
 				return domain.Schedule{ID: uuid.New()}, true, nil
 			}},
 			fakeSlotRepository{},

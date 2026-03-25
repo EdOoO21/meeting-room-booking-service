@@ -13,12 +13,12 @@ import (
 )
 
 type fakeBookingRepository struct {
-	createFn            func(ctx context.Context, booking domain.Booking) error
-	updateFn            func(ctx context.Context, booking domain.Booking) error
-	getByIDFn           func(ctx context.Context, id uuid.UUID) (domain.Booking, bool, error)
-	hasActiveBySlotIDFn func(ctx context.Context, slotID uuid.UUID) (bool, error)
-	listByUserFutureFn  func(ctx context.Context, userID uuid.UUID, now time.Time) ([]domain.Booking, error)
-	listFn              func(ctx context.Context, page, pageSize int) ([]domain.Booking, int, error)
+	createFn            func(_ context.Context, booking domain.Booking) error
+	updateFn            func(_ context.Context, booking domain.Booking) error
+	getByIDFn           func(_ context.Context, id uuid.UUID) (domain.Booking, bool, error)
+	hasActiveBySlotIDFn func(_ context.Context, slotID uuid.UUID) (bool, error)
+	listByUserFutureFn  func(_ context.Context, userID uuid.UUID, now time.Time) ([]domain.Booking, error)
+	listFn              func(_ context.Context, page, pageSize int) ([]domain.Booking, int, error)
 }
 
 func (f fakeBookingRepository) Create(ctx context.Context, booking domain.Booking) error {
@@ -64,10 +64,10 @@ func (f fakeBookingRepository) List(ctx context.Context, page, pageSize int) ([]
 }
 
 type fakeSlotRepository struct {
-	createManyFn          func(ctx context.Context, slots []domain.Slot) error
-	getByIDFn             func(ctx context.Context, id uuid.UUID) (domain.Slot, bool, error)
-	hasAnyByRoomAndDateFn func(ctx context.Context, roomID uuid.UUID, date time.Time) (bool, error)
-	listAvailableFn       func(ctx context.Context, roomID uuid.UUID, date time.Time) ([]domain.Slot, error)
+	createManyFn          func(_ context.Context, slots []domain.Slot) error
+	getByIDFn             func(_ context.Context, id uuid.UUID) (domain.Slot, bool, error)
+	hasAnyByRoomAndDateFn func(_ context.Context, roomID uuid.UUID, date time.Time) (bool, error)
+	listAvailableFn       func(_ context.Context, roomID uuid.UUID, date time.Time) ([]domain.Slot, error)
 }
 
 func (f fakeSlotRepository) CreateMany(ctx context.Context, slots []domain.Slot) error {
@@ -99,7 +99,7 @@ func (f fakeSlotRepository) ListAvailableByRoomAndDate(ctx context.Context, room
 }
 
 type fakeTxManager struct {
-	withinTransactionFn func(ctx context.Context, fn func(ctx context.Context) error) error
+	withinTransactionFn func(_ context.Context, fn func(ctx context.Context) error) error
 }
 
 func (f fakeTxManager) WithinTransaction(ctx context.Context, fn func(ctx context.Context) error) error {
@@ -118,7 +118,7 @@ type fakeClock struct{ now time.Time }
 func (f fakeClock) NowUTC() time.Time { return f.now }
 
 type fakeConferenceLinkService struct {
-	createFn func(ctx context.Context, bookingID uuid.UUID) (string, error)
+	createFn func(_ context.Context, bookingID uuid.UUID) (string, error)
 }
 
 func (f fakeConferenceLinkService) CreateConferenceLink(ctx context.Context, bookingID uuid.UUID) (string, error) {
@@ -143,19 +143,19 @@ func TestService_Create_Success(t *testing.T) {
 	var created domain.Booking
 	service := NewService(
 		fakeBookingRepository{
-			hasActiveBySlotIDFn: func(ctx context.Context, slotID uuid.UUID) (bool, error) { return false, nil },
-			createFn: func(ctx context.Context, booking domain.Booking) error {
+			hasActiveBySlotIDFn: func(_ context.Context, _ uuid.UUID) (bool, error) { return false, nil },
+			createFn: func(_ context.Context, booking domain.Booking) error {
 				created = booking
 				return nil
 			},
 		},
-		fakeSlotRepository{getByIDFn: func(ctx context.Context, id uuid.UUID) (domain.Slot, bool, error) {
+		fakeSlotRepository{getByIDFn: func(_ context.Context, _ uuid.UUID) (domain.Slot, bool, error) {
 			return slot, true, nil
 		}},
 		fakeTxManager{},
 		fakeIDGenerator{next: bookingID},
 		fakeClock{now: now},
-		fakeConferenceLinkService{createFn: func(ctx context.Context, gotBookingID uuid.UUID) (string, error) {
+		fakeConferenceLinkService{createFn: func(_ context.Context, gotBookingID uuid.UUID) (string, error) {
 			if gotBookingID != bookingID {
 				t.Fatalf("conference bookingID = %v, want %v", gotBookingID, bookingID)
 			}
@@ -202,7 +202,7 @@ func TestService_Create_ReturnsExpectedErrors(t *testing.T) {
 			name: "slot not found",
 			service: NewService(
 				fakeBookingRepository{},
-				fakeSlotRepository{getByIDFn: func(ctx context.Context, id uuid.UUID) (domain.Slot, bool, error) { return domain.Slot{}, false, nil }},
+				fakeSlotRepository{getByIDFn: func(_ context.Context, _ uuid.UUID) (domain.Slot, bool, error) { return domain.Slot{}, false, nil }},
 				fakeTxManager{},
 				fakeIDGenerator{next: uuid.New()},
 				fakeClock{now: now},
@@ -214,8 +214,8 @@ func TestService_Create_ReturnsExpectedErrors(t *testing.T) {
 		{
 			name: "slot booked",
 			service: NewService(
-				fakeBookingRepository{hasActiveBySlotIDFn: func(ctx context.Context, slotID uuid.UUID) (bool, error) { return true, nil }},
-				fakeSlotRepository{getByIDFn: func(ctx context.Context, id uuid.UUID) (domain.Slot, bool, error) {
+				fakeBookingRepository{hasActiveBySlotIDFn: func(_ context.Context, _ uuid.UUID) (bool, error) { return true, nil }},
+				fakeSlotRepository{getByIDFn: func(_ context.Context, _ uuid.UUID) (domain.Slot, bool, error) {
 					future := time.Date(2026, time.March, 24, 13, 0, 0, 0, time.UTC)
 					slot, _ := domain.NewSlot(uuid.New(), uuid.New(), future, future.Add(domain.SlotDuration))
 					return slot, true, nil
@@ -231,8 +231,8 @@ func TestService_Create_ReturnsExpectedErrors(t *testing.T) {
 		{
 			name: "past slot",
 			service: NewService(
-				fakeBookingRepository{hasActiveBySlotIDFn: func(ctx context.Context, slotID uuid.UUID) (bool, error) { return false, nil }},
-				fakeSlotRepository{getByIDFn: func(ctx context.Context, id uuid.UUID) (domain.Slot, bool, error) { return pastSlot, true, nil }},
+				fakeBookingRepository{hasActiveBySlotIDFn: func(_ context.Context, _ uuid.UUID) (bool, error) { return false, nil }},
+				fakeSlotRepository{getByIDFn: func(_ context.Context, _ uuid.UUID) (domain.Slot, bool, error) { return pastSlot, true, nil }},
 				fakeTxManager{},
 				fakeIDGenerator{next: uuid.New()},
 				fakeClock{now: now},
@@ -244,12 +244,11 @@ func TestService_Create_ReturnsExpectedErrors(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := tt.service.Create(context.Background(), tt.input)
-			if !errors.Is(err, tt.want) {
-				t.Fatalf("Create() error = %v, want %v", err, tt.want)
+			_, gotErr := tt.service.Create(context.Background(), tt.input)
+			if !errors.Is(gotErr, tt.want) {
+				t.Fatalf("Create() error = %v, want %v", gotErr, tt.want)
 			}
 		})
 	}
@@ -272,8 +271,8 @@ func TestService_Cancel_UpdatesActiveBookingAndIsIdempotent(t *testing.T) {
 		updated := false
 		service := NewService(
 			fakeBookingRepository{
-				getByIDFn: func(ctx context.Context, id uuid.UUID) (domain.Booking, bool, error) { return active, true, nil },
-				updateFn: func(ctx context.Context, booking domain.Booking) error {
+				getByIDFn: func(_ context.Context, _ uuid.UUID) (domain.Booking, bool, error) { return active, true, nil },
+				updateFn: func(_ context.Context, booking domain.Booking) error {
 					updated = true
 					if booking.Status != domain.BookingStatusCancelled {
 						t.Fatalf("updated booking status = %q, want %q", booking.Status, domain.BookingStatusCancelled)
@@ -288,9 +287,9 @@ func TestService_Cancel_UpdatesActiveBookingAndIsIdempotent(t *testing.T) {
 			nil,
 		)
 
-		out, err := service.Cancel(context.Background(), CancelInput{Actor: shared.Actor{UserID: userID, Role: domain.RoleUser}, BookingID: bookingID})
-		if err != nil {
-			t.Fatalf("Cancel() error = %v", err)
+		out, cancelErr := service.Cancel(context.Background(), CancelInput{Actor: shared.Actor{UserID: userID, Role: domain.RoleUser}, BookingID: bookingID})
+		if cancelErr != nil {
+			t.Fatalf("Cancel() error = %v", cancelErr)
 		}
 
 		if out.Booking.Status != domain.BookingStatusCancelled {
@@ -307,8 +306,8 @@ func TestService_Cancel_UpdatesActiveBookingAndIsIdempotent(t *testing.T) {
 		updated := false
 		service := NewService(
 			fakeBookingRepository{
-				getByIDFn: func(ctx context.Context, id uuid.UUID) (domain.Booking, bool, error) { return cancelled, true, nil },
-				updateFn: func(ctx context.Context, booking domain.Booking) error {
+				getByIDFn: func(_ context.Context, _ uuid.UUID) (domain.Booking, bool, error) { return cancelled, true, nil },
+				updateFn: func(_ context.Context, _ domain.Booking) error {
 					updated = true
 					return nil
 				},
@@ -320,9 +319,9 @@ func TestService_Cancel_UpdatesActiveBookingAndIsIdempotent(t *testing.T) {
 			nil,
 		)
 
-		out, err := service.Cancel(context.Background(), CancelInput{Actor: shared.Actor{UserID: userID, Role: domain.RoleUser}, BookingID: bookingID})
-		if err != nil {
-			t.Fatalf("Cancel() error = %v", err)
+		out, cancelErr := service.Cancel(context.Background(), CancelInput{Actor: shared.Actor{UserID: userID, Role: domain.RoleUser}, BookingID: bookingID})
+		if cancelErr != nil {
+			t.Fatalf("Cancel() error = %v", cancelErr)
 		}
 
 		if out.Booking.Status != domain.BookingStatusCancelled {
@@ -352,19 +351,18 @@ func TestService_Cancel_ReturnsExpectedErrors(t *testing.T) {
 		want    error
 	}{
 		{name: "forbidden role", service: NewService(fakeBookingRepository{}, fakeSlotRepository{}, fakeTxManager{}, fakeIDGenerator{next: uuid.New()}, fakeClock{}, nil), input: CancelInput{Actor: shared.Actor{UserID: userID, Role: domain.RoleAdmin}, BookingID: bookingID}, want: shared.ErrForbidden},
-		{name: "not found", service: NewService(fakeBookingRepository{getByIDFn: func(ctx context.Context, id uuid.UUID) (domain.Booking, bool, error) {
+		{name: "not found", service: NewService(fakeBookingRepository{getByIDFn: func(_ context.Context, _ uuid.UUID) (domain.Booking, bool, error) {
 			return domain.Booking{}, false, nil
 		}}, fakeSlotRepository{}, fakeTxManager{}, fakeIDGenerator{next: uuid.New()}, fakeClock{}, nil), input: CancelInput{Actor: shared.Actor{UserID: userID, Role: domain.RoleUser}, BookingID: bookingID}, want: shared.ErrBookingNotFound},
-		{name: "wrong owner", service: NewService(fakeBookingRepository{getByIDFn: func(ctx context.Context, id uuid.UUID) (domain.Booking, bool, error) { return booking, true, nil }}, fakeSlotRepository{}, fakeTxManager{}, fakeIDGenerator{next: uuid.New()}, fakeClock{}, nil), input: CancelInput{Actor: shared.Actor{UserID: userID, Role: domain.RoleUser}, BookingID: bookingID}, want: shared.ErrForbidden},
+		{name: "wrong owner", service: NewService(fakeBookingRepository{getByIDFn: func(_ context.Context, _ uuid.UUID) (domain.Booking, bool, error) { return booking, true, nil }}, fakeSlotRepository{}, fakeTxManager{}, fakeIDGenerator{next: uuid.New()}, fakeClock{}, nil), input: CancelInput{Actor: shared.Actor{UserID: userID, Role: domain.RoleUser}, BookingID: bookingID}, want: shared.ErrForbidden},
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := tt.service.Cancel(context.Background(), tt.input)
-			if !errors.Is(err, tt.want) {
-				t.Fatalf("Cancel() error = %v, want %v", err, tt.want)
+			_, gotErr := tt.service.Cancel(context.Background(), tt.input)
+			if !errors.Is(gotErr, tt.want) {
+				t.Fatalf("Cancel() error = %v, want %v", gotErr, tt.want)
 			}
 		})
 	}
@@ -377,13 +375,13 @@ func TestService_ListMine_AndList(t *testing.T) {
 	wantBookings := []domain.Booking{{ID: uuid.New()}, {ID: uuid.New()}}
 	service := NewService(
 		fakeBookingRepository{
-			listByUserFutureFn: func(ctx context.Context, gotUserID uuid.UUID, now time.Time) ([]domain.Booking, error) {
+			listByUserFutureFn: func(_ context.Context, gotUserID uuid.UUID, _ time.Time) ([]domain.Booking, error) {
 				if gotUserID != userID {
 					t.Fatalf("userID = %v, want %v", gotUserID, userID)
 				}
 				return wantBookings, nil
 			},
-			listFn: func(ctx context.Context, page, pageSize int) ([]domain.Booking, int, error) {
+			listFn: func(_ context.Context, page, pageSize int) ([]domain.Booking, int, error) {
 				if page != 2 || pageSize != 5 {
 					t.Fatalf("page/pageSize = %d/%d, want 2/5", page, pageSize)
 				}
@@ -430,7 +428,6 @@ func TestService_List_ReturnsValidationErrors(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			_, err := service.List(context.Background(), tt.input)

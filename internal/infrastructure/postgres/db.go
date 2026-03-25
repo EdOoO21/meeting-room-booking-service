@@ -17,9 +17,9 @@ func New(ctx context.Context, dsn string) (*DB, error) {
 		return nil, fmt.Errorf("create pg pool: %w", err)
 	}
 
-	if err := pool.Ping(ctx); err != nil {
+	if pingErr := pool.Ping(ctx); pingErr != nil {
 		pool.Close()
-		return nil, fmt.Errorf("ping pg: %w", err)
+		return nil, fmt.Errorf("ping pg: %w", pingErr)
 	}
 
 	return &DB{pool: pool}, nil

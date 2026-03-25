@@ -1,12 +1,14 @@
 package http
 
 import (
-	"strings"
 	stdhttp "net/http"
+	"strings"
 
 	"github.com/avito-internships/test-backend-1-EdOoO21/internal/application/shared"
 	"github.com/avito-internships/test-backend-1-EdOoO21/internal/infrastructure/http/generated"
 )
+
+const bearerHeaderParts = 2
 
 func authMiddleware(next stdhttp.Handler) stdhttp.Handler {
 	return stdhttp.HandlerFunc(func(w stdhttp.ResponseWriter, r *stdhttp.Request) {
@@ -21,8 +23,8 @@ func authMiddleware(next stdhttp.Handler) stdhttp.Handler {
 			return
 		}
 
-		parts := strings.SplitN(authHeader, " ", 2)
-		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		parts := strings.SplitN(authHeader, " ", bearerHeaderParts)
+		if len(parts) != bearerHeaderParts || !strings.EqualFold(parts[0], "Bearer") {
 			writeAPIError(w, shared.ErrUnauthorized)
 			return
 		}

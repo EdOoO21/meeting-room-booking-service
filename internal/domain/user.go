@@ -34,7 +34,7 @@ func NewUser(id uuid.UUID, email string, role Role, createdAt time.Time) (User, 
 	}
 
 	if _, err := mail.ParseAddress(normalizedEmail); err != nil {
-		return User{}, fmt.Errorf("%w: %v", ErrInvalidEmail, err)
+		return User{}, fmt.Errorf("%w: %s", ErrInvalidEmail, err.Error())
 	}
 
 	if !role.IsValid() {

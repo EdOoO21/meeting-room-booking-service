@@ -149,11 +149,11 @@ func newIntegrationApp(t *testing.T) integrationApp {
 	}
 	defer pool.Close()
 
-	if err := pool.Ping(ctx); err != nil {
-		t.Skipf("http integration tests skipped: ping pg: %v", err)
+	if pingErr := pool.Ping(ctx); pingErr != nil {
+		t.Skipf("http integration tests skipped: ping pg: %v", pingErr)
 	}
 
-	resetTestDatabase(t, ctx, pool)
+	resetTestDatabase(ctx, t, pool)
 
 	db, err := apppostgres.New(ctx, dsn)
 	if err != nil {
@@ -213,7 +213,7 @@ func testDSN(t *testing.T) string {
 	return ""
 }
 
-func resetTestDatabase(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
+func resetTestDatabase(ctx context.Context, t *testing.T, pool *pgxpool.Pool) {
 	t.Helper()
 
 	if _, err := pool.Exec(ctx, "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"); err != nil {
@@ -227,8 +227,8 @@ func resetTestDatabase(t *testing.T, ctx context.Context, pool *pgxpool.Pool) {
 	}
 
 	for _, statement := range splitSQLStatements(string(migrationSQL)) {
-		if _, err := pool.Exec(ctx, statement); err != nil {
-			t.Fatalf("apply migration statement %q: %v", statement, err)
+		if _, execErr := pool.Exec(ctx, statement); execErr != nil {
+			t.Fatalf("apply migration statement %q: %v", statement, execErr)
 		}
 	}
 }
@@ -401,7 +401,7 @@ func createRoom(t *testing.T, handler http.Handler, token string) generated.Room
 	return payload.Room
 }
 
-func createSchedule(t *testing.T, handler http.Handler, token string, roomID openapi_types.UUID, targetDate time.Time) generated.Schedule {
+func createSchedule(t *testing.T, handler http.Handler, token string, roomID openapi_types.UUID, targetDate time.Time) {
 	t.Helper()
 
 	response := performJSONRequest(t, handler, http.MethodPost, "/rooms/"+roomID.String()+"/schedule/create", map[string]any{
@@ -418,8 +418,6 @@ func createSchedule(t *testing.T, handler http.Handler, token string, roomID ope
 		Schedule generated.Schedule `json:"schedule"`
 	}
 	decodeJSON(t, response.Body.Bytes(), &payload)
-
-	return payload.Schedule
 }
 
 func listSlots(t *testing.T, handler http.Handler, token string, roomID openapi_types.UUID, targetDate time.Time) []generated.Slot {

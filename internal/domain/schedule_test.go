@@ -56,7 +56,6 @@ func TestNewSchedule_ReturnsValidationErrors(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -84,8 +83,8 @@ func TestParseTimeOfDay(t *testing.T) {
 		t.Fatalf("parsed.String() = %q, want %q", parsed.String(), "09:30")
 	}
 
-	if _, err := ParseTimeOfDay("24:00"); !errors.Is(err, ErrInvalidTimeOfDay) {
-		t.Fatalf("ParseTimeOfDay() error = %v, want %v", err, ErrInvalidTimeOfDay)
+	if _, parseErr := ParseTimeOfDay("24:00"); !errors.Is(parseErr, ErrInvalidTimeOfDay) {
+		t.Fatalf("ParseTimeOfDay() error = %v, want %v", parseErr, ErrInvalidTimeOfDay)
 	}
 }
 

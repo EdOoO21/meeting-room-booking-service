@@ -49,11 +49,11 @@ func (s BookingStatus) IsValid() bool {
 	return s == BookingStatusActive || s == BookingStatusCancelled
 }
 
-func (b Booking) BelongsTo(userID uuid.UUID) bool {
+func (b *Booking) BelongsTo(userID uuid.UUID) bool {
 	return b.UserID == userID
 }
 
-func (b Booking) IsActive() bool {
+func (b *Booking) IsActive() bool {
 	return b.Status == BookingStatusActive
 }
 
@@ -61,7 +61,7 @@ func (b *Booking) Cancel() {
 	b.Status = BookingStatusCancelled
 }
 
-func (b Booking) CanBeCreatedBy(role Role, slot Slot, now time.Time) error {
+func (b *Booking) CanBeCreatedBy(role Role, slot Slot, now time.Time) error {
 	if !role.CanCreateBooking() {
 		return ErrForbiddenBookingByRole
 	}

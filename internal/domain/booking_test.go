@@ -53,7 +53,6 @@ func TestNewBooking_ReturnsValidationErrors(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -103,15 +102,15 @@ func TestBookingCanBeCreatedBy(t *testing.T) {
 
 	booking := Booking{}
 
-	if err := booking.CanBeCreatedBy(RoleUser, futureSlot, now); err != nil {
-		t.Fatalf("CanBeCreatedBy() unexpected error = %v", err)
+	if createErr := booking.CanBeCreatedBy(RoleUser, futureSlot, now); createErr != nil {
+		t.Fatalf("CanBeCreatedBy() unexpected error = %v", createErr)
 	}
 
-	if err := booking.CanBeCreatedBy(RoleAdmin, futureSlot, now); !errors.Is(err, ErrForbiddenBookingByRole) {
-		t.Fatalf("CanBeCreatedBy() error = %v, want %v", err, ErrForbiddenBookingByRole)
+	if createErr := booking.CanBeCreatedBy(RoleAdmin, futureSlot, now); !errors.Is(createErr, ErrForbiddenBookingByRole) {
+		t.Fatalf("CanBeCreatedBy() error = %v, want %v", createErr, ErrForbiddenBookingByRole)
 	}
 
-	if err := booking.CanBeCreatedBy(RoleUser, pastSlot, now); !errors.Is(err, ErrPastSlotBooking) {
-		t.Fatalf("CanBeCreatedBy() error = %v, want %v", err, ErrPastSlotBooking)
+	if createErr := booking.CanBeCreatedBy(RoleUser, pastSlot, now); !errors.Is(createErr, ErrPastSlotBooking) {
+		t.Fatalf("CanBeCreatedBy() error = %v, want %v", createErr, ErrPastSlotBooking)
 	}
 }

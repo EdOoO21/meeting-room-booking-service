@@ -75,7 +75,7 @@ func NewSchedule(id, roomID uuid.UUID, daysOfWeek []DayOfWeek, startTime, endTim
 func ParseTimeOfDay(value string) (TimeOfDay, error) {
 	parsed, err := time.Parse("15:04", value)
 	if err != nil {
-		return TimeOfDay{}, fmt.Errorf("%w: %v", ErrInvalidTimeOfDay, err)
+		return TimeOfDay{}, fmt.Errorf("%w: %s", ErrInvalidTimeOfDay, err.Error())
 	}
 
 	result := TimeOfDay{
@@ -129,6 +129,8 @@ func DayOfWeekFromWeekday(weekday time.Weekday) DayOfWeek {
 		return Friday
 	case time.Saturday:
 		return Saturday
+	case time.Sunday:
+		return Sunday
 	default:
 		return Sunday
 	}

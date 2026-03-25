@@ -29,12 +29,12 @@ func (m *TxManager) WithinTransaction(ctx context.Context, fn func(ctx context.C
 		_ = tx.Rollback(ctx)
 	}()
 
-	if err := fn(txCtx); err != nil {
-		return err
+	if fnErr := fn(txCtx); fnErr != nil {
+		return fnErr
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit tx: %w", err)
+	if commitErr := tx.Commit(ctx); commitErr != nil {
+		return fmt.Errorf("commit tx: %w", commitErr)
 	}
 
 	return nil

@@ -61,7 +61,7 @@ func mapAPIError(err error) apiError {
 	}
 }
 
-func writeGeneratedParamError(w stdhttp.ResponseWriter, r *stdhttp.Request, err error) {
+func writeGeneratedParamError(w stdhttp.ResponseWriter, _ *stdhttp.Request, err error) {
 	writeAPIError(w, apiError{Status: stdhttp.StatusBadRequest, Code: generated.INVALIDREQUEST, Message: err.Error(), Err: err})
 }
 

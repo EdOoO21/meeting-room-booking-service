@@ -54,15 +54,15 @@ func (r *RoomRepository) List(ctx context.Context) ([]domain.Room, error) {
 
 	rooms := make([]domain.Room, 0)
 	for rows.Next() {
-		room, err := scanRoomRow(rows)
-		if err != nil {
-			return nil, err
+		room, scanErr := scanRoomRow(rows)
+		if scanErr != nil {
+			return nil, scanErr
 		}
 		rooms = append(rooms, room)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate rooms: %w", err)
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, fmt.Errorf("iterate rooms: %w", rowsErr)
 	}
 
 	return rooms, nil

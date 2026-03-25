@@ -29,15 +29,20 @@ func timeOfDayDBValue(value domain.TimeOfDay) time.Time {
 }
 
 func scanTimeOfDay(value time.Time) (domain.TimeOfDay, error) {
-	return domain.ParseTimeOfDay(value.UTC().Format("15:04"))
+	parsed, err := domain.ParseTimeOfDay(value.UTC().Format("15:04"))
+	if err != nil {
+		return domain.TimeOfDay{}, fmt.Errorf("parse time of day: %w", err)
+	}
+
+	return parsed, nil
 }
 
-func scanDaysOfWeek(values []int16) ([]domain.DayOfWeek, error) {
+func scanDaysOfWeek(values []int16) []domain.DayOfWeek {
 	result := make([]domain.DayOfWeek, 0, len(values))
 	for _, value := range values {
 		result = append(result, domain.DayOfWeek(value))
 	}
-	return result, nil
+	return result
 }
 
 func dbDaysOfWeek(values []domain.DayOfWeek) []int16 {

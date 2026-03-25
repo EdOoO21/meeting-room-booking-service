@@ -1,0 +1,636 @@
+basePath: /
+definitions:
+  http.BookingResponse:
+    properties:
+      booking:
+        $ref: '#/definitions/http.SwaggerBooking'
+    type: object
+  http.BookingsListResponse:
+    properties:
+      bookings:
+        items:
+          $ref: '#/definitions/http.SwaggerBooking'
+        type: array
+    type: object
+  http.BookingsPageResponse:
+    properties:
+      bookings:
+        items:
+          $ref: '#/definitions/http.SwaggerBooking'
+        type: array
+      pagination:
+        $ref: '#/definitions/http.SwaggerPagination'
+    type: object
+  http.InfoResponse:
+    properties:
+      status:
+        type: string
+    type: object
+  http.RegisterResponse:
+    properties:
+      user:
+        $ref: '#/definitions/http.SwaggerUser'
+    type: object
+  http.RoomResponse:
+    properties:
+      room:
+        $ref: '#/definitions/http.SwaggerRoom'
+    type: object
+  http.RoomsListResponse:
+    properties:
+      rooms:
+        items:
+          $ref: '#/definitions/http.SwaggerRoom'
+        type: array
+    type: object
+  http.ScheduleResponse:
+    properties:
+      schedule:
+        $ref: '#/definitions/http.SwaggerSchedule'
+    type: object
+  http.SlotsListResponse:
+    properties:
+      slots:
+        items:
+          $ref: '#/definitions/http.SwaggerSlot'
+        type: array
+    type: object
+  http.SwaggerBooking:
+    properties:
+      conferenceLink:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      slotId:
+        type: string
+      status:
+        type: string
+      userId:
+        type: string
+    type: object
+  http.SwaggerCreateBookingRequest:
+    properties:
+      createConferenceLink:
+        type: boolean
+      slotId:
+        type: string
+    type: object
+  http.SwaggerCreateRoomRequest:
+    properties:
+      capacity:
+        type: integer
+      description:
+        type: string
+      name:
+        type: string
+    type: object
+  http.SwaggerCreateScheduleRequest:
+    properties:
+      daysOfWeek:
+        items:
+          type: integer
+        type: array
+      endTime:
+        type: string
+      roomId:
+        type: string
+      startTime:
+        type: string
+    type: object
+  http.SwaggerDummyLoginRequest:
+    properties:
+      role:
+        type: string
+    type: object
+  http.SwaggerErrorDetail:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+    type: object
+  http.SwaggerErrorResponse:
+    properties:
+      error:
+        $ref: '#/definitions/http.SwaggerErrorDetail'
+    type: object
+  http.SwaggerLoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  http.SwaggerPagination:
+    properties:
+      page:
+        type: integer
+      pageSize:
+        type: integer
+      total:
+        type: integer
+    type: object
+  http.SwaggerRegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      role:
+        type: string
+    type: object
+  http.SwaggerRoom:
+    properties:
+      capacity:
+        type: integer
+      createdAt:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  http.SwaggerSchedule:
+    properties:
+      daysOfWeek:
+        items:
+          type: integer
+        type: array
+      endTime:
+        type: string
+      id:
+        type: string
+      roomId:
+        type: string
+      startTime:
+        type: string
+    type: object
+  http.SwaggerSlot:
+    properties:
+      end:
+        type: string
+      id:
+        type: string
+      roomId:
+        type: string
+      start:
+        type: string
+    type: object
+  http.SwaggerTokenResponse:
+    properties:
+      token:
+        type: string
+    type: object
+  http.SwaggerUser:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      role:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: API для бронирования переговорок и управления расписаниями.
+  title: Room Booking API
+  version: "1.0"
+paths:
+  /_info:
+    get:
+      description: Возвращает простой статус готовности сервиса.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.InfoResponse'
+      summary: Service healthcheck
+      tags:
+      - system
+  /bookings/{bookingId}/cancel:
+    post:
+      description: Отменяет собственную бронь. Доступно только user.
+      parameters:
+      - description: Booking ID
+        in: path
+        name: bookingId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BookingResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Cancel booking
+      tags:
+      - bookings
+  /bookings/create:
+    post:
+      consumes:
+      - application/json
+      description: Создает бронь на слот. Опционально может запросить ссылку на конференцию.
+        Доступно только user.
+      parameters:
+      - description: Create booking payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.SwaggerCreateBookingRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.BookingResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create booking
+      tags:
+      - bookings
+  /bookings/list:
+    get:
+      description: Возвращает все брони с пагинацией. Доступно только admin.
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size, max 100
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BookingsPageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List all bookings
+      tags:
+      - bookings
+  /bookings/my:
+    get:
+      description: Возвращает список броней текущего пользователя.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.BookingsListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List my bookings
+      tags:
+      - bookings
+  /dummyLogin:
+    post:
+      consumes:
+      - application/json
+      description: Возвращает тестовый JWT для роли admin или user без регистрации.
+      parameters:
+      - description: Dummy login payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.SwaggerDummyLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.SwaggerTokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+      summary: Dummy login
+      tags:
+      - auth
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Выполняет обычный логин по email и паролю и возвращает JWT.
+      parameters:
+      - description: Login payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.SwaggerLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.SwaggerTokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+      summary: Login
+      tags:
+      - auth
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: Регистрирует нового пользователя по email и паролю.
+      parameters:
+      - description: Register payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.SwaggerRegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.RegisterResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+      summary: Register user
+      tags:
+      - auth
+  /rooms/{roomId}/schedule/create:
+    post:
+      consumes:
+      - application/json
+      description: Создает расписание доступности для переговорки. Доступно только
+        admin.
+      parameters:
+      - description: Room ID
+        in: path
+        name: roomId
+        required: true
+        type: string
+      - description: Create schedule payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.SwaggerCreateScheduleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.ScheduleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create room schedule
+      tags:
+      - schedules
+  /rooms/{roomId}/slots/list:
+    get:
+      description: Возвращает доступные для бронирования слоты по переговорке и дате.
+      parameters:
+      - description: Room ID
+        in: path
+        name: roomId
+        required: true
+        type: string
+      - description: Date in YYYY-MM-DD format
+        in: query
+        name: date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.SlotsListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List available slots
+      tags:
+      - slots
+  /rooms/create:
+    post:
+      consumes:
+      - application/json
+      description: Создает новую переговорку. Доступно только admin.
+      parameters:
+      - description: Create room payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/http.SwaggerCreateRoomRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.RoomResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create room
+      tags:
+      - rooms
+  /rooms/list:
+    get:
+      description: Возвращает список переговорок.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.RoomsListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.SwaggerErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List rooms
+      tags:
+      - rooms
+schemes:
+- http
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

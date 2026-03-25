@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -23,6 +24,11 @@ import (
 	apppostgres "github.com/avito-internships/test-backend-1-EdOoO21/internal/infrastructure/postgres"
 	"github.com/avito-internships/test-backend-1-EdOoO21/internal/settings"
 	"github.com/google/uuid"
+)
+
+const (
+	atlasRoomCapacity = 8
+	orionRoomCapacity = 4
 )
 
 type seedRoomSpec struct {
@@ -67,20 +73,60 @@ type bookingService interface {
 	Create(ctx context.Context, input appbookings.CreateInput) (appbookings.CreateOutput, error)
 }
 
+type seedDependencies struct {
+	authService      authRegistrar
+	userRepo         userByEmailGetter
+	roomsService     roomCreator
+	roomRepo         roomLister
+	schedulesService scheduleCreator
+	scheduleRepo     scheduleByRoomGetter
+	slotsService     slotAvailabilityLister
+	bookingsService  bookingService
+	admin            shared.Actor
+}
+
+type seedResult struct {
+	demoUser           domain.User
+	createdUser        bool
+	secondUser         domain.User
+	createdSecondUser  bool
+	roomsByName        map[string]domain.Room
+	createdRooms       int
+	createdSchedules   int
+	createdDemoBooking bool
+}
+
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	ctx := context.Background()
 	cfg := settings.NewConfig()
 
 	if strings.TrimSpace(cfg.Postgres.DSN) == "" {
-		log.Fatal("APP_POSTGRES_DSN is required")
+		return errors.New("APP_POSTGRES_DSN is required")
 	}
 
 	db, err := apppostgres.New(ctx, cfg.Postgres.DSN)
 	if err != nil {
-		log.Fatalf("connect postgres: %v", err)
+		return fmt.Errorf("connect postgres: %w", err)
 	}
 	defer db.Close()
 
+	deps := buildSeedDependencies(cfg, db)
+	result, err := seedDemoData(ctx, deps)
+	if err != nil {
+		return err
+	}
+
+	writeSeedSummary(result)
+	return nil
+}
+
+func buildSeedDependencies(cfg settings.Config, db *apppostgres.DB) seedDependencies {
 	clock := appclock.New()
 	ids := appid.New()
 	passwords := apppassword.New()
@@ -94,29 +140,79 @@ func main() {
 	slotRepo := apppostgres.NewSlotRepository(db)
 	bookingRepo := apppostgres.NewBookingRepository(db)
 
-	authService := appauth.NewService(userRepo, ids, clock, passwords, tokens)
-	roomsService := approoms.NewService(roomRepo, ids, clock)
-	schedulesService := appschedules.NewService(roomRepo, scheduleRepo, slotRepo, txManager, ids, clock)
-	slotsService := appslots.NewService(roomRepo, scheduleRepo, slotRepo, txManager, ids, clock)
-	bookingsService := appbookings.NewService(bookingRepo, slotRepo, txManager, ids, clock, conferenceLinks)
+	return seedDependencies{
+		authService:      appauth.NewService(userRepo, ids, clock, passwords, tokens),
+		userRepo:         userRepo,
+		roomsService:     approoms.NewService(roomRepo, ids, clock),
+		roomRepo:         roomRepo,
+		schedulesService: appschedules.NewService(roomRepo, scheduleRepo, slotRepo, txManager, ids, clock),
+		scheduleRepo:     scheduleRepo,
+		slotsService:     appslots.NewService(roomRepo, scheduleRepo, slotRepo, txManager, ids, clock),
+		bookingsService:  appbookings.NewService(bookingRepo, slotRepo, txManager, ids, clock, conferenceLinks),
+		admin:            shared.Actor{UserID: appauth.DummyAdminUserID, Role: domain.RoleAdmin},
+	}
+}
 
-	admin := shared.Actor{UserID: appauth.DummyAdminUserID, Role: domain.RoleAdmin}
+func seedDemoData(ctx context.Context, deps seedDependencies) (seedResult, error) {
+	result := seedResult{}
 
-	demoUser, createdUser, err := ensureDemoUser(ctx, authService, userRepo, "demo.user@example.com")
+	var err error
+	result.demoUser, result.createdUser, err = ensureDemoUser(ctx, deps.authService, deps.userRepo, "demo.user@example.com")
 	if err != nil {
-		log.Fatalf("ensure demo user: %v", err)
+		return seedResult{}, fmt.Errorf("ensure demo user: %w", err)
 	}
 
-	secondUser, createdSecondUser, err := ensureDemoUser(ctx, authService, userRepo, "demo.user2@example.com")
+	result.secondUser, result.createdSecondUser, err = ensureDemoUser(ctx, deps.authService, deps.userRepo, "demo.user2@example.com")
 	if err != nil {
-		log.Fatalf("ensure second demo user: %v", err)
+		return seedResult{}, fmt.Errorf("ensure second demo user: %w", err)
 	}
 
-	roomSpecs := []seedRoomSpec{
+	result.roomsByName, result.createdRooms, result.createdSchedules, err = seedRooms(ctx, deps)
+	if err != nil {
+		return seedResult{}, err
+	}
+
+	result.createdDemoBooking, err = ensureDemoBooking(ctx, deps.slotsService, deps.bookingsService, result.demoUser, result.roomsByName["Atlas"])
+	if err != nil {
+		return seedResult{}, fmt.Errorf("ensure demo booking: %w", err)
+	}
+
+	return result, nil
+}
+
+func seedRooms(ctx context.Context, deps seedDependencies) (map[string]domain.Room, int, int, error) {
+	roomsByName := make(map[string]domain.Room, len(defaultSeedRoomSpecs()))
+	createdRooms := 0
+	createdSchedules := 0
+
+	for _, spec := range defaultSeedRoomSpecs() {
+		room, created, roomErr := ensureRoom(ctx, deps.roomsService, deps.roomRepo, deps.admin, spec)
+		if roomErr != nil {
+			return nil, 0, 0, fmt.Errorf("ensure room %q: %w", spec.Name, roomErr)
+		}
+		if created {
+			createdRooms++
+		}
+		roomsByName[spec.Name] = room
+
+		createdSchedule, scheduleErr := ensureSchedule(ctx, deps.schedulesService, deps.scheduleRepo, deps.admin, room.ID, spec)
+		if scheduleErr != nil {
+			return nil, 0, 0, fmt.Errorf("ensure schedule for %q: %w", spec.Name, scheduleErr)
+		}
+		if createdSchedule {
+			createdSchedules++
+		}
+	}
+
+	return roomsByName, createdRooms, createdSchedules, nil
+}
+
+func defaultSeedRoomSpecs() []seedRoomSpec {
+	return []seedRoomSpec{
 		{
 			Name:        "Atlas",
 			Description: "Main demo room",
-			Capacity:    8,
+			Capacity:    atlasRoomCapacity,
 			Days:        []domain.DayOfWeek{domain.Monday, domain.Tuesday, domain.Wednesday, domain.Thursday, domain.Friday, domain.Saturday, domain.Sunday},
 			StartTime:   "09:00",
 			EndTime:     "18:00",
@@ -124,46 +220,27 @@ func main() {
 		{
 			Name:        "Orion",
 			Description: "Focus room for smaller meetings",
-			Capacity:    4,
+			Capacity:    orionRoomCapacity,
 			Days:        []domain.DayOfWeek{domain.Monday, domain.Tuesday, domain.Wednesday, domain.Thursday, domain.Friday},
 			StartTime:   "10:00",
 			EndTime:     "17:00",
 		},
 	}
+}
 
-	roomsByName := make(map[string]domain.Room, len(roomSpecs))
-	createdRooms := 0
-	createdSchedules := 0
+func writeSeedSummary(result seedResult) {
+	mustWriteSeedLinef("seed complete\n")
+	mustWriteSeedLinef("demo_user_email=%s created=%t\n", result.demoUser.Email, result.createdUser)
+	mustWriteSeedLinef("second_demo_user_email=%s created=%t\n", result.secondUser.Email, result.createdSecondUser)
+	mustWriteSeedLinef("rooms_created=%d schedules_created=%d booking_created=%t\n", result.createdRooms, result.createdSchedules, result.createdDemoBooking)
+	mustWriteSeedLinef("demo_room=%s\n", result.roomsByName["Atlas"].Name)
+}
 
-	for _, spec := range roomSpecs {
-		room, created, err := ensureRoom(ctx, roomsService, roomRepo, admin, spec)
-		if err != nil {
-			log.Fatalf("ensure room %q: %v", spec.Name, err)
-		}
-		if created {
-			createdRooms++
-		}
-		roomsByName[spec.Name] = room
-
-		createdSchedule, err := ensureSchedule(ctx, schedulesService, scheduleRepo, admin, room.ID, spec)
-		if err != nil {
-			log.Fatalf("ensure schedule for %q: %v", spec.Name, err)
-		}
-		if createdSchedule {
-			createdSchedules++
-		}
+func mustWriteSeedLinef(format string, args ...any) {
+	if _, err := fmt.Fprintf(os.Stdout, format, args...); err != nil {
+		log.Printf("write seed output: %v", err)
+		os.Exit(1)
 	}
-
-	createdBooking, err := ensureDemoBooking(ctx, slotsService, bookingsService, demoUser, roomsByName["Atlas"])
-	if err != nil {
-		log.Fatalf("ensure demo booking: %v", err)
-	}
-
-	fmt.Fprintln(os.Stdout, "seed complete")
-	fmt.Fprintf(os.Stdout, "demo_user_email=%s created=%t\n", demoUser.Email, createdUser)
-	fmt.Fprintf(os.Stdout, "second_demo_user_email=%s created=%t\n", secondUser.Email, createdSecondUser)
-	fmt.Fprintf(os.Stdout, "rooms_created=%d schedules_created=%d booking_created=%t\n", createdRooms, createdSchedules, createdBooking)
-	fmt.Fprintf(os.Stdout, "demo_room=%s\n", roomsByName["Atlas"].Name)
 }
 
 func ensureDemoUser(ctx context.Context, authService authRegistrar, userRepo userByEmailGetter, email string) (domain.User, bool, error) {
@@ -171,7 +248,7 @@ func ensureDemoUser(ctx context.Context, authService authRegistrar, userRepo use
 
 	user, _, exists, err := userRepo.GetByEmail(ctx, email)
 	if err != nil {
-		return domain.User{}, false, err
+		return domain.User{}, false, fmt.Errorf("get user by email: %w", err)
 	}
 	if exists {
 		return user, false, nil
@@ -183,7 +260,7 @@ func ensureDemoUser(ctx context.Context, authService authRegistrar, userRepo use
 		Role:     domain.RoleUser,
 	})
 	if err != nil {
-		return domain.User{}, false, err
+		return domain.User{}, false, fmt.Errorf("register demo user: %w", err)
 	}
 
 	return out.User, true, nil
@@ -192,7 +269,7 @@ func ensureDemoUser(ctx context.Context, authService authRegistrar, userRepo use
 func ensureRoom(ctx context.Context, roomsService roomCreator, roomRepo roomLister, admin shared.Actor, spec seedRoomSpec) (domain.Room, bool, error) {
 	rooms, err := roomRepo.List(ctx)
 	if err != nil {
-		return domain.Room{}, false, err
+		return domain.Room{}, false, fmt.Errorf("list rooms: %w", err)
 	}
 
 	for _, room := range rooms {
@@ -209,7 +286,7 @@ func ensureRoom(ctx context.Context, roomsService roomCreator, roomRepo roomList
 		Capacity:    &capacity,
 	})
 	if err != nil {
-		return domain.Room{}, false, err
+		return domain.Room{}, false, fmt.Errorf("create room: %w", err)
 	}
 
 	return out.Room, true, nil
@@ -218,7 +295,7 @@ func ensureRoom(ctx context.Context, roomsService roomCreator, roomRepo roomList
 func ensureSchedule(ctx context.Context, schedulesService scheduleCreator, scheduleRepo scheduleByRoomGetter, admin shared.Actor, roomID uuid.UUID, spec seedRoomSpec) (bool, error) {
 	_, exists, err := scheduleRepo.GetByRoomID(ctx, roomID)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("get schedule by room: %w", err)
 	}
 	if exists {
 		return false, nil
@@ -232,7 +309,7 @@ func ensureSchedule(ctx context.Context, schedulesService scheduleCreator, sched
 		EndTime:    spec.EndTime,
 	})
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("create schedule: %w", err)
 	}
 
 	return true, nil
@@ -243,7 +320,7 @@ func ensureDemoBooking(ctx context.Context, slotsService slotAvailabilityLister,
 
 	mine, err := bookingsService.ListMine(ctx, appbookings.ListMineInput{Actor: actor})
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("list demo bookings: %w", err)
 	}
 	if len(mine.Bookings) > 0 {
 		return false, nil
@@ -258,7 +335,7 @@ func ensureDemoBooking(ctx context.Context, slotsService slotAvailabilityLister,
 		Date:   date,
 	})
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("list available slots: %w", err)
 	}
 	if len(available.Slots) == 0 {
 		return false, nil
@@ -270,7 +347,7 @@ func ensureDemoBooking(ctx context.Context, slotsService slotAvailabilityLister,
 		CreateConferenceLink: true,
 	})
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("create demo booking: %w", err)
 	}
 
 	return true, nil

@@ -56,7 +56,7 @@ func TestService_Create_Success(t *testing.T) {
 	var created domain.Room
 
 	service := NewService(
-		fakeRoomRepository{createFn: func(ctx context.Context, room domain.Room) error {
+		fakeRoomRepository{createFn: func(_ context.Context, room domain.Room) error {
 			created = room
 			return nil
 		}},
@@ -102,7 +102,7 @@ func TestService_List_ReturnsRoomsForAuthorizedActor(t *testing.T) {
 
 	wantRooms := []domain.Room{{ID: uuid.New(), Name: "A"}, {ID: uuid.New(), Name: "B"}}
 	service := NewService(
-		fakeRoomRepository{listFn: func(ctx context.Context) ([]domain.Room, error) {
+		fakeRoomRepository{listFn: func(_ context.Context) ([]domain.Room, error) {
 			return wantRooms, nil
 		}},
 		fakeIDGenerator{},

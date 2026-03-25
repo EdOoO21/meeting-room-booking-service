@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	appports "github.com/avito-internships/test-backend-1-EdOoO21/internal/application/ports"
@@ -73,7 +74,7 @@ func (s *Service) DummyLogin(ctx context.Context, input DummyLoginInput) (DummyL
 		Role:   input.Role,
 	})
 	if err != nil {
-		return DummyLoginOutput{}, err
+		return DummyLoginOutput{}, fmt.Errorf("issue dummy login token: %w", err)
 	}
 
 	return DummyLoginOutput{Token: token, UserID: userID, Role: input.Role}, nil
@@ -87,12 +88,12 @@ func (s *Service) Register(ctx context.Context, input RegisterInput) (RegisterOu
 
 	user, err := domain.NewUser(s.ids.NewUUID(), input.Email, input.Role, s.clock.NowUTC())
 	if err != nil {
-		return RegisterOutput{}, err
+		return RegisterOutput{}, fmt.Errorf("create domain user: %w", err)
 	}
 
 	_, _, exists, err := s.users.GetByEmail(ctx, user.Email)
 	if err != nil {
-		return RegisterOutput{}, err
+		return RegisterOutput{}, fmt.Errorf("get user by email: %w", err)
 	}
 	if exists {
 		return RegisterOutput{}, shared.ErrEmailAlreadyExists
@@ -100,11 +101,11 @@ func (s *Service) Register(ctx context.Context, input RegisterInput) (RegisterOu
 
 	hash, err := s.passwords.Hash(password)
 	if err != nil {
-		return RegisterOutput{}, err
+		return RegisterOutput{}, fmt.Errorf("hash user password: %w", err)
 	}
 
-	if err := s.users.Create(ctx, user, hash); err != nil {
-		return RegisterOutput{}, err
+	if createErr := s.users.Create(ctx, user, hash); createErr != nil {
+		return RegisterOutput{}, fmt.Errorf("create user: %w", createErr)
 	}
 
 	return RegisterOutput{User: user}, nil
@@ -113,13 +114,13 @@ func (s *Service) Register(ctx context.Context, input RegisterInput) (RegisterOu
 func (s *Service) Login(ctx context.Context, input LoginInput) (LoginOutput, error) {
 	user, passwordHash, exists, err := s.users.GetByEmail(ctx, input.Email)
 	if err != nil {
-		return LoginOutput{}, err
+		return LoginOutput{}, fmt.Errorf("get user by email: %w", err)
 	}
 	if !exists {
 		return LoginOutput{}, shared.ErrInvalidCredentials
 	}
 
-	if err := s.passwords.Compare(passwordHash, input.Password); err != nil {
+	if compareErr := s.passwords.Compare(passwordHash, input.Password); compareErr != nil {
 		return LoginOutput{}, shared.ErrInvalidCredentials
 	}
 
@@ -128,7 +129,7 @@ func (s *Service) Login(ctx context.Context, input LoginInput) (LoginOutput, err
 		Role:   user.Role,
 	})
 	if err != nil {
-		return LoginOutput{}, err
+		return LoginOutput{}, fmt.Errorf("issue login token: %w", err)
 	}
 
 	return LoginOutput{Token: token}, nil

@@ -94,15 +94,15 @@ func (r *BookingRepository) ListByUserFuture(ctx context.Context, userID uuid.UU
 
 	bookings := make([]domain.Booking, 0)
 	for rows.Next() {
-		booking, err := scanBookingRow(rows)
-		if err != nil {
-			return nil, err
+		booking, scanErr := scanBookingRow(rows)
+		if scanErr != nil {
+			return nil, scanErr
 		}
 		bookings = append(bookings, booking)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate future bookings by user: %w", err)
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, fmt.Errorf("iterate future bookings by user: %w", rowsErr)
 	}
 
 	return bookings, nil
@@ -129,15 +129,15 @@ func (r *BookingRepository) List(ctx context.Context, page, pageSize int) ([]dom
 
 	bookings := make([]domain.Booking, 0)
 	for rows.Next() {
-		booking, err := scanBookingRow(rows)
-		if err != nil {
-			return nil, 0, err
+		booking, scanErr := scanBookingRow(rows)
+		if scanErr != nil {
+			return nil, 0, scanErr
 		}
 		bookings = append(bookings, booking)
 	}
 
-	if err := rows.Err(); err != nil {
-		return nil, 0, fmt.Errorf("iterate bookings: %w", err)
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, 0, fmt.Errorf("iterate bookings: %w", rowsErr)
 	}
 
 	return bookings, total, nil

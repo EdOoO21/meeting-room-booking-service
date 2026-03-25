@@ -131,19 +131,19 @@ func TestService_ListAvailable_ReturnsExistingSlots(t *testing.T) {
 	createManyCalled := false
 
 	service := NewService(
-		fakeRoomRepository{getByIDFn: func(ctx context.Context, id uuid.UUID) (domain.Room, bool, error) {
+		fakeRoomRepository{getByIDFn: func(_ context.Context, _ uuid.UUID) (domain.Room, bool, error) {
 			return domain.Room{ID: roomID}, true, nil
 		}},
 		fakeScheduleRepository{},
 		fakeSlotRepository{
-			hasAnyByRoomAndDateFn: func(ctx context.Context, roomID uuid.UUID, date time.Time) (bool, error) {
+			hasAnyByRoomAndDateFn: func(_ context.Context, _ uuid.UUID, _ time.Time) (bool, error) {
 				return true, nil
 			},
-			createManyFn: func(ctx context.Context, slots []domain.Slot) error {
+			createManyFn: func(_ context.Context, _ []domain.Slot) error {
 				createManyCalled = true
 				return nil
 			},
-			listAvailableFn: func(ctx context.Context, roomID uuid.UUID, date time.Time) ([]domain.Slot, error) {
+			listAvailableFn: func(_ context.Context, _ uuid.UUID, _ time.Time) ([]domain.Slot, error) {
 				return wantSlots, nil
 			},
 		},
@@ -181,22 +181,22 @@ func TestService_ListAvailable_LazilyGeneratesSlots(t *testing.T) {
 	checks := 0
 
 	service := NewService(
-		fakeRoomRepository{getByIDFn: func(ctx context.Context, id uuid.UUID) (domain.Room, bool, error) {
+		fakeRoomRepository{getByIDFn: func(_ context.Context, _ uuid.UUID) (domain.Room, bool, error) {
 			return domain.Room{ID: roomID}, true, nil
 		}},
-		fakeScheduleRepository{getByRoomIDFn: func(ctx context.Context, roomID uuid.UUID) (domain.Schedule, bool, error) {
+		fakeScheduleRepository{getByRoomIDFn: func(_ context.Context, _ uuid.UUID) (domain.Schedule, bool, error) {
 			return schedule, true, nil
 		}},
 		fakeSlotRepository{
-			hasAnyByRoomAndDateFn: func(ctx context.Context, roomID uuid.UUID, date time.Time) (bool, error) {
+			hasAnyByRoomAndDateFn: func(_ context.Context, _ uuid.UUID, _ time.Time) (bool, error) {
 				checks++
 				return false, nil
 			},
-			createManyFn: func(ctx context.Context, slots []domain.Slot) error {
+			createManyFn: func(_ context.Context, slots []domain.Slot) error {
 				createdSlots = append([]domain.Slot(nil), slots...)
 				return nil
 			},
-			listAvailableFn: func(ctx context.Context, roomID uuid.UUID, date time.Time) ([]domain.Slot, error) {
+			listAvailableFn: func(_ context.Context, _ uuid.UUID, _ time.Time) ([]domain.Slot, error) {
 				return createdSlots, nil
 			},
 		},
@@ -240,7 +240,6 @@ func TestService_ListAvailable_ReturnsValidationErrors(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			_, err := service.ListAvailable(context.Background(), tt.input)
@@ -255,7 +254,7 @@ func TestService_ListAvailable_RoomNotFound(t *testing.T) {
 	t.Parallel()
 
 	service := NewService(
-		fakeRoomRepository{getByIDFn: func(ctx context.Context, id uuid.UUID) (domain.Room, bool, error) {
+		fakeRoomRepository{getByIDFn: func(_ context.Context, _ uuid.UUID) (domain.Room, bool, error) {
 			return domain.Room{}, false, nil
 		}},
 		fakeScheduleRepository{},

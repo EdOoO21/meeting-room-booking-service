@@ -2,13 +2,15 @@ package jwt
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	jwtv5 "github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+
 	appports "github.com/avito-internships/test-backend-1-EdOoO21/internal/application/ports"
 	"github.com/avito-internships/test-backend-1-EdOoO21/internal/domain"
-	"github.com/google/uuid"
-	jwtv5 "github.com/golang-jwt/jwt/v5"
 )
 
 type Service struct {
@@ -60,7 +62,7 @@ func (s *Service) ParseToken(token string) (appports.TokenClaims, error) {
 
 	claims, ok := parsed.Claims.(*Claims)
 	if !ok || !parsed.Valid {
-		return appports.TokenClaims{}, fmt.Errorf("invalid jwt claims")
+		return appports.TokenClaims{}, errors.New("invalid jwt claims")
 	}
 
 	userID, err := uuid.Parse(claims.UserID)
@@ -70,7 +72,7 @@ func (s *Service) ParseToken(token string) (appports.TokenClaims, error) {
 
 	role := domain.Role(claims.Role)
 	if !role.IsValid() {
-		return appports.TokenClaims{}, fmt.Errorf("invalid jwt role")
+		return appports.TokenClaims{}, errors.New("invalid jwt role")
 	}
 
 	return appports.TokenClaims{UserID: userID, Role: role}, nil
