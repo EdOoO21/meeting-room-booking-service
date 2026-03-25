@@ -14,6 +14,7 @@ func NewRouter(services Services) stdhttp.Handler {
 
 	router.Use(middleware.RequestID)
 	router.Use(middleware.RealIP)
+	router.Use(requestLogger(services.Logger))
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.Timeout(30 * time.Second))
 	router.Use(func(next stdhttp.Handler) stdhttp.Handler {

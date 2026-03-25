@@ -1,4 +1,4 @@
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT,
@@ -11,9 +11,10 @@ CREATE TABLE users (
 INSERT INTO users (id, email, password_hash, role, created_at)
 VALUES
     ('00000000-0000-0000-0000-000000000001', 'dummy-admin@example.com', NULL, 'admin', NOW()),
-    ('00000000-0000-0000-0000-000000000002', 'dummy-user@example.com', NULL, 'user', NOW());
+    ('00000000-0000-0000-0000-000000000002', 'dummy-user@example.com', NULL, 'user', NOW())
+ON CONFLICT (id) DO NOTHING;
 
-CREATE TABLE rooms (
+CREATE TABLE IF NOT EXISTS rooms (
     id UUID PRIMARY KEY,
     name TEXT NOT NULL,
     description TEXT,
@@ -23,7 +24,7 @@ CREATE TABLE rooms (
     CONSTRAINT rooms_capacity_positive CHECK (capacity IS NULL OR capacity > 0)
 );
 
-CREATE TABLE schedules (
+CREATE TABLE IF NOT EXISTS schedules (
     id UUID PRIMARY KEY,
     room_id UUID NOT NULL UNIQUE REFERENCES rooms(id) ON DELETE CASCADE,
     days_of_week SMALLINT[] NOT NULL,
@@ -36,7 +37,7 @@ CREATE TABLE schedules (
     CONSTRAINT schedules_time_range_aligned CHECK (MOD(EXTRACT(EPOCH FROM (end_time - start_time))::INTEGER, 1800) = 0)
 );
 
-CREATE TABLE slots (
+CREATE TABLE IF NOT EXISTS slots (
     id UUID PRIMARY KEY,
     room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
     start_at TIMESTAMPTZ NOT NULL,
@@ -46,7 +47,7 @@ CREATE TABLE slots (
     CONSTRAINT slots_room_start_unique UNIQUE (room_id, start_at)
 );
 
-CREATE TABLE bookings (
+CREATE TABLE IF NOT EXISTS bookings (
     id UUID PRIMARY KEY,
     slot_id UUID NOT NULL REFERENCES slots(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
@@ -56,15 +57,15 @@ CREATE TABLE bookings (
     CONSTRAINT bookings_status_check CHECK (status IN ('active', 'cancelled'))
 );
 
-CREATE UNIQUE INDEX bookings_active_slot_uidx
+CREATE UNIQUE INDEX IF NOT EXISTS bookings_active_slot_uidx
     ON bookings (slot_id)
     WHERE status = 'active';
 
-CREATE INDEX slots_room_start_idx
+CREATE INDEX IF NOT EXISTS slots_room_start_idx
     ON slots (room_id, start_at);
 
-CREATE INDEX bookings_user_created_at_idx
+CREATE INDEX IF NOT EXISTS bookings_user_created_at_idx
     ON bookings (user_id, created_at DESC);
 
-CREATE INDEX bookings_created_at_idx
+CREATE INDEX IF NOT EXISTS bookings_created_at_idx
     ON bookings (created_at DESC);
