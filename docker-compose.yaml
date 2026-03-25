@@ -3,16 +3,16 @@ services:
     image: postgres:17
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-room_booking}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
     ports:
-      - "${POSTGRES_PORT}:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./migrations:/workspace/migrations:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-room_booking}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -23,13 +23,13 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-admin}
     volumes:
       - ./migrations:/workspace/migrations:ro
     command:
       - sh
       - -c
-      - psql -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB} -v ON_ERROR_STOP=1 -f /workspace/migrations/000001_init.up.sql
+      - psql -h postgres -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-room_booking} -v ON_ERROR_STOP=1 -f /workspace/migrations/000001_init.up.sql
     restart: "no"
 
   app:
@@ -42,12 +42,12 @@ services:
       migrate:
         condition: service_completed_successfully
     environment:
-      APP_HTTP_PORT: ${APP_HTTP_PORT}
-      APP_POSTGRES_DSN: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
-      APP_JWT_SECRET: ${APP_JWT_SECRET}
-      APP_JWT_TTL_MINUTES: ${APP_JWT_TTL_MINUTES}
+      APP_HTTP_PORT: ${APP_HTTP_PORT:-8080}
+      APP_POSTGRES_DSN: postgres://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-admin}@postgres:5432/${POSTGRES_DB:-room_booking}?sslmode=disable
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-test-secret}
+      APP_JWT_TTL_MINUTES: ${APP_JWT_TTL_MINUTES:-60}
     ports:
-      - "${APP_HTTP_PORT}:8080"
+      - "${APP_HTTP_PORT:-8080}:8080"
     restart: unless-stopped
 
 volumes:

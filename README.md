@@ -20,6 +20,8 @@ APP_POSTGRES_TEST_DSN=postgres://postgres:postgres@localhost:55432/room_booking_
 
 `APP_POSTGRES_TEST_DSN` менее критичен: он нужен только для integration tests и может указывать на отдельную test DB с любыми подходящими тестовыми параметрами.
 
+ps: в автооценке системы не прокидываются переменные окружения, поэтому пришлось писать дефолтные значения в docker-compose
+
 Запуск сервиса через Makefile:
 
 ```bash
